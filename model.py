@@ -12,20 +12,20 @@ class HREBCRF(BertPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels
-        # Dynamically learn r_lstm
+        
         self.r_lstm = nn.Parameter(torch.tensor(0.5))
-        # Dynamically learn r_mega
         self.r_mega = nn.Parameter(torch.tensor(0.5))
+        
         self.layer_norm = nn.LayerNorm(config.hidden_size)
         self.bert = BertModel(config, add_pooling_layer=False)
         self.dropout = nn.Dropout(0.5)
         self.bilstm = nn.LSTM(
             input_size=config.hidden_size,
             hidden_size=config.hidden_size // 2,
-            num_layers=2,  # 设置为2层
+            num_layers=2,
             batch_first=True,
             bidirectional=True,
-            dropout=0.5  # 层间dropout
+            dropout=0.5
         )
         self.mega = MegaLayer(
             dim=config.hidden_size,
@@ -65,20 +65,21 @@ class HREBCRF(BertPreTrainedModel):
             return_dict=return_dict,
         )
 
-        sequence_output = outputs[0]
-        sequence_output = self.dropout(sequence_output)
-        lstm_output, hc = self.bilstm(sequence_output)
+        bert_output = outputs[0]
+        bert_output = self.dropout(bert_output)
+        
+        lstm_output, _ = self.bilstm(bert_output)
+        mega_output = self.mega(bert_output)
 
         r_lstm = self.r_lstm
         r_mega = self.r_mega
 
-        lstm_output = r_lstm * lstm_output + (1 - r_lstm) * sequence_output
-        lstm_output = self.layer_norm(lstm_output)
+        lstm_output = r_lstm * lstm_output + (1 - r_lstm) * bert_output
+        mega_output = r_mega * mega_output + (1 - r_mega) * bert_output
 
-        mega_output = self.mega(lstm_output)
-        mega_output = r_mega * mega_output + (1 - r_mega) * lstm_output
-
-        logits = self.classifier(mega_output)
+        merge_output = self.layer_norm(mega_output + lstm_output)
+        
+        logits = self.classifier(merge_output)
 
         loss = None
         if labels is not None:

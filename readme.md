@@ -15,7 +15,7 @@ Main features:
 ## Env Setup
 This environment setup is valid in Window10 (GTX2060) and Ubuntu22.04 (GTX4090).
 
-Use `PyTorch=2.3.0` with `CUDA=11.8` or replace your own pytorch version.
+Use at least `PyTorch=2.3.0` with `CUDA=11.8` or replace your own pytorch version.
 
 ```shell
 pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu118

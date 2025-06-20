@@ -3,45 +3,36 @@ from transformers import TrainerCallback
 import torch
 
 
-def tokenize(batch, tokenizer):
-    result = {
-        'label_ids': [],
-        'input_ids': [],
-        'token_type_ids': [],
-    }
-    max_length = 32
+def tokenize(batch, tokenizer, max_length=64):
+    tokenized_inputs = tokenizer(
+        batch["tokens"],
+        truncation=True,
+        is_split_into_words=True,
+        max_length=max_length,
+        padding="max_length",
+    )
 
-    for tokens, label in zip(batch['tokens'], batch['label_ids']):
-        tokenids = tokenizer(tokens, add_special_tokens=False)
-
-        token_ids = []
+    all_labels = []
+    for i, labels_for_one_example in enumerate(batch["label_ids"]):
+        word_ids = tokenized_inputs.word_ids(batch_index=i)
+        previous_word_idx = None
         label_ids = []
-        for ids, lab in zip(tokenids['input_ids'], label):
-            if len(ids) > 1 and lab % 2 == 1:
-                token_ids.extend(ids)
-                chunk = [lab + 1] * len(ids)
-                chunk[0] = lab
-                label_ids.extend(chunk)
+        for word_idx in word_ids:
+            if word_idx is None:
+                label_ids.append(-100)
+            elif word_idx != previous_word_idx:
+                label_ids.append(labels_for_one_example[word_idx])
             else:
-                token_ids.extend(ids)
-                chunk = [lab] * len(ids)
-                label_ids.extend(chunk)
+                original_label = labels_for_one_example[word_idx]
+                if original_label % 2 == 1:
+                    label_ids.append(original_label + 1)
+                else:
+                    label_ids.append(original_label)
+            previous_word_idx = word_idx
+        all_labels.append(label_ids)
 
-        token_type_ids = tokenizer.create_token_type_ids_from_sequences(
-            token_ids)
-        token_ids = tokenizer.build_inputs_with_special_tokens(token_ids)
-        label_ids.insert(0, 0)
-        label_ids.append(0)
-        result['input_ids'].append(token_ids)
-        result['label_ids'].append(label_ids)
-        result['token_type_ids'].append(token_type_ids)
-
-    result = tokenizer.pad(result, padding='longest',
-                           max_length=max_length, return_attention_mask=True)
-    for i in range(len(result['input_ids'])):
-        diff = len(result['input_ids'][i]) - len(result['label_ids'][i])
-        result['label_ids'][i] += [0] * diff
-    return result
+    tokenized_inputs["label_ids"] = all_labels
+    return tokenized_inputs
 
 
 def compute_metrics(pred, dataset):
@@ -49,20 +40,21 @@ def compute_metrics(pred, dataset):
     preds = pred.predictions.flatten().astype(int)
     _label = dataset["train"].features["ner_tags"].feature.names
     true_predictions = [
-        _label[pred] for pred, label in zip(preds, labels) if label != -100 and label != 0
+        _label[pred] for pred, label in zip(preds, labels) if label != -100 and not (label == 0 and pred == 0)
     ]
 
     true_labels = [
-        _label[label] for pred, label in zip(preds, labels) if label != -100 and label != 0
+        _label[label] for pred, label in zip(preds, labels) if label != -100 and not (label == 0 and pred == 0)
     ]
 
     preds = true_predictions
     labels = true_labels
-
-    f1 = f1_score(labels, preds, average='weighted')
-    p = precision_score(labels, preds, average='weighted')
-    r = recall_score(labels, preds, average='weighted')
-    print(classification_report(labels, preds))
+    filtered_labels = [l for l in _label if l != 'O']
+    f1 = f1_score(labels, preds, average='weighted', zero_division=0)
+    p = precision_score(labels, preds, average='weighted', zero_division=0)
+    r = recall_score(labels, preds, average='weighted', zero_division=0)
+    print(classification_report(labels, preds, labels=filtered_labels, zero_division=0))
+    
     return {
         'precision': p,
         'recall': r,
