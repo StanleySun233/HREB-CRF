@@ -15,10 +15,10 @@ Main features:
 ## Env Setup
 This environment setup is valid in Window10 (GTX2060) and Ubuntu22.04 (GTX4090).
 
-Use at least `PyTorch=2.6.0` with `CUDA=12.x` or replace your own pytorch version.
+Use `PyTorch=2.3.0` with `CUDA=11.8` or replace your own pytorch version.
 
 ```shell
-pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu128
+pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu118
 ```
 
 Other Module
@@ -27,14 +27,6 @@ pip install jupyter notebook
 pip install datasets scikit-learn transformers mega_pytorch pytorch-crf
 pip install accelerate -U
 ```
-
-```shell
-export HF_ENDPOINT=https://hf-mirror.com
-huggingface-cli download --resume-download hfl/chinese-roberta-wwm-ext-large --local-dir hfl/chinese-roberta-wwm-ext-large
-huggingface-cli download --repo-type dataset --resume-download PassbyGrocer/msra-ner --local-dir PassbyGrocer/msra-ner
-
-```
-
 
 Then, start with notebook [HREB-CRF.ipynb](HREB-CRF.ipynb) with train and evaluate.
 
