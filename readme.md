@@ -24,7 +24,7 @@ pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https
 Other Module
 ```shell
 pip install jupyter notebook
-pip install datasets scikit-learn transformers mega_pytorch pytorch-crf
+pip install datasets scikit-learn transformers==4.41.0 mega_pytorch pytorch-crf
 pip install accelerate -U
 ```
 
